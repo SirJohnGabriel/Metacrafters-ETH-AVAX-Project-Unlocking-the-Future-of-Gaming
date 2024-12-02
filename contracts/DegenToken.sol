@@ -8,6 +8,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 contract DegenToken is ERC20, Ownable, ERC20Burnable {
 
+    struct RedemptionInfo {
+        uint8 itemId;
+        uint256 timestamp;
+    }
+    mapping(address => RedemptionInfo[]) public redemptions;
+
     constructor() ERC20("Degen", "DGN") Ownable(msg.sender) {}
 
     function mint(address to, uint256 amount) public onlyOwner {
@@ -34,8 +40,9 @@ contract DegenToken is ERC20, Ownable, ERC20Burnable {
     }
 
     function redeemTokens(uint8 _item) external {
-        require(_item < 4, "Item not in the list");
+        require(_item > 0 && _item < 4, "Item not in the list");
         uint8 _value = 0;
+
         if (_item == 1) {
             _value = 100;
         } else if (_item == 2) {
@@ -43,8 +50,20 @@ contract DegenToken is ERC20, Ownable, ERC20Burnable {
         } else if (_item == 3) {
             _value = 150;
         }
+
+        require(balanceOf(msg.sender) >= _value, "Not enough Degen Tokens to redeem");
         _burn(msg.sender, _value);
+
+        redemptions[msg.sender].push(RedemptionInfo({
+            itemId: _item,
+            timestamp: block.timestamp
+        }));
+
         emit TokensRedeemed(msg.sender, _value, _item);
+    }
+
+    function getRedemptionHistory(address user) external view returns (RedemptionInfo[] memory) {
+        return redemptions[user];
     }
 
     event TokensRedeemed(address indexed redeemer, uint256 amount, uint8 item);
